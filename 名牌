@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PetWeGo · 宠物名牌预览</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600&family=Noto+Sans+SC:wght@600;700&family=ZCOOL+KuaiLe&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      overflow-x: hidden;
+      background: #14141c;
+      background-image:
+        radial-gradient(ellipse 80% 50% at 50% -20%, rgba(196, 181, 253, 0.18), transparent),
+        radial-gradient(ellipse 60% 40% at 100% 80%, rgba(251, 182, 206, 0.12), transparent),
+        radial-gradient(ellipse 50% 35% at 0% 90%, rgba(167, 243, 208, 0.08), transparent);
+      font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      gap: 28px;
+      padding: 28px 16px 40px;
+    }
+
+    .bg-decor {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .bg-decor .paw {
+      position: absolute;
+      font-size: 28px;
+      opacity: 0.12;
+      filter: grayscale(0.2);
+    }
+
+    .bg-decor .paw:nth-child(1) { top: 12%; left: 8%; transform: rotate(-18deg); }
+    .bg-decor .paw:nth-child(2) { top: 22%; right: 10%; transform: rotate(22deg); font-size: 22px; }
+    .bg-decor .paw:nth-child(3) { bottom: 18%; left: 12%; transform: rotate(12deg); font-size: 24px; }
+    .bg-decor .paw:nth-child(4) { bottom: 28%; right: 8%; transform: rotate(-25deg); }
+
+    .brand {
+      position: relative;
+      z-index: 1;
+      text-align: center;
+      margin-bottom: 4px;
+    }
+
+    .brand-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .brand-icon-wrap {
+      width: 44px;
+      height: 44px;
+      border-radius: 14px;
+      background: linear-gradient(145deg, #fbcfe8, #e9d5ff 45%, #c4b5fd);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow:
+        0 4px 16px rgba(244, 114, 182, 0.35),
+        inset 0 1px 0 rgba(255, 255, 255, 0.65);
+      font-size: 24px;
+      line-height: 1;
+    }
+
+    .brand-name {
+      font-family: "Fredoka", "ZCOOL KuaiLe", sans-serif;
+      font-size: clamp(1.75rem, 5vw, 2.1rem);
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      background: linear-gradient(120deg, #fff 0%, #fce7f3 35%, #e9d5ff 70%, #fef3c7 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.35));
+    }
+
+    .brand-sub {
+      font-family: "ZCOOL KuaiLe", sans-serif;
+      font-size: 15px;
+      color: rgba(252, 231, 243, 0.72);
+      margin-top: 8px;
+      letter-spacing: 0.12em;
+    }
+
+    .hint {
+      position: relative;
+      z-index: 1;
+      color: #d8b4d8;
+      font-size: 13px;
+      letter-spacing: 0.08em;
+      padding: 8px 16px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(251, 182, 206, 0.2);
+    }
+
+    .ring-wrap {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    :root {
+      /* 圆片厚度（3D）：翻转时侧面可见间隙，接近 ~2mm 级金属片 */
+      --tag-metal-depth: 7px;
+    }
+
+    .scene {
+      width: 200px;
+      height: 200px;
+      perspective: 900px;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.35)) drop-shadow(0 1px 2px rgba(0, 0, 0, 0.2));
+    }
+
+    .tag {
+      width: 100%;
+      height: 100%;
+      position: relative;
+      transform-style: preserve-3d;
+      transition: transform 0.75s cubic-bezier(0.34, 1.2, 0.64, 1);
+    }
+
+    @media (hover: hover) {
+      .scene:hover .tag { transform: rotateY(180deg); }
+    }
+    @media (hover: none) {
+      .scene.flipped .tag { transform: rotateY(180deg); }
+    }
+
+    /* 产品：不锈钢圆片 + 轻微厚度 + 拉丝 + 激光刻字（仅文字） */
+    .face {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      backface-visibility: hidden;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0;
+      padding: 0 10px;
+      box-shadow:
+        0 0 0 1px rgba(255, 255, 255, 0.55),
+        0 0 0 2px rgba(110, 118, 128, 0.5),
+        inset 0 1px 0 rgba(255, 255, 255, 0.52),
+        inset 0 -1px 3px rgba(40, 45, 52, 0.1);
+    }
+
+    .face.front {
+      transform: translateZ(calc(var(--tag-metal-depth) / 2));
+    }
+
+    .face-inner {
+      position: relative;
+      z-index: 4;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      width: 100%;
+      padding: 0;
+      pointer-events: none;
+    }
+
+    .face.front .face-inner {
+      padding: 8px 0 0;
+    }
+
+    /* 背面：占满圆内可用高度，号码放在「说明」与「slogan」之间的垂直正中 */
+    /*
+     * 背面：三块贴紧居中，号码夹在中间；用统一小间距留白，不靠「拉大中间层」居中
+     */
+    .face-inner-back {
+      gap: 6px;
+      box-sizing: border-box;
+      padding: 26px 12px 20px;
+      justify-content: center;
+      align-items: center;
+      max-width: 100%;
+    }
+
+    /* 侧边「厚度」观感：圆周略暗一圈，像在圆角立边上吃到阴影 */
+    .face::before {
+      content: "";
+      position: absolute;
+      inset: 2px;
+      border-radius: 50%;
+      box-shadow:
+        inset 0 0 0 5px rgba(55, 60, 68, 0.14),
+        inset 0 2px 8px rgba(255, 255, 255, 0.32),
+        inset 0 -4px 12px rgba(45, 50, 58, 0.12);
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .front {
+      background:
+        /* 细拉丝：不锈钢常见加工纹 */
+        repeating-linear-gradient(
+          -18deg,
+          transparent 0,
+          transparent 2px,
+          rgba(255, 255, 255, 0.06) 2px,
+          rgba(255, 255, 255, 0.06) 3px
+        ),
+        linear-gradient(165deg, #e8eaee 0%, #d3d7de 38%, #b9c0c8 72%, #a8aeb6 100%);
+    }
+
+    .back {
+      background:
+        repeating-linear-gradient(
+          -18deg,
+          transparent 0,
+          transparent 2px,
+          rgba(255, 255, 255, 0.05) 2px,
+          rgba(255, 255, 255, 0.05) 3px
+        ),
+        linear-gradient(168deg, #dce0e6 0%, #c5cbd4 40%, #adb4be 78%, #9aa2ac 100%);
+      transform: rotateY(180deg) translateZ(calc(var(--tag-metal-depth) / 2));
+    }
+
+    /* 吊牌顶部穿绳孔 */
+    .face::after {
+      content: "";
+      position: absolute;
+      top: 10%;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 30%, #4a5058, #202328 78%);
+      box-shadow:
+        inset 0 1px 3px rgba(0, 0, 0, 0.65),
+        0 1px 0 rgba(255, 255, 255, 0.4);
+      z-index: 10;
+      pointer-events: none;
+    }
+
+    /* 狗名：激光刻字偏深灰，少「印刷白边」 */
+    .dog-name {
+      font-family: "Noto Sans SC", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei UI", "Microsoft YaHei", sans-serif;
+      font-size: clamp(26px, 7.5vw, 34px);
+      font-weight: 700;
+      line-height: 1.12;
+      max-width: 88%;
+      margin: 0 auto;
+      text-align: center;
+      color: #2c3138;
+      letter-spacing: 0.02em;
+      text-shadow:
+        0 1px 0 rgba(255, 255, 255, 0.22),
+        0 -0.5px 0 rgba(0, 0, 0, 0.08);
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+    }
+
+    /* 人格类型：刻字，字距拉开像打标 */
+    .personality {
+      font-size: 14px;
+      font-weight: 700;
+      color: #343a42;
+      letter-spacing: 0.28em;
+      padding: 0;
+      margin: 0;
+      background: none;
+      border: none;
+      text-shadow: 0 1px 0 rgba(255, 255, 255, 0.18);
+    }
+
+    .lost-text {
+      font-size: 13px;
+      color: #383e47;
+      text-align: center;
+      line-height: 1.42;
+      opacity: 0.92;
+      padding: 0 10px;
+      margin: 0;
+      letter-spacing: 0.02em;
+      text-shadow: 0 1px 0 rgba(255, 255, 255, 0.15);
+    }
+
+    .phone {
+      font-size: 19px;
+      font-weight: 700;
+      color: #242a32;
+      letter-spacing: 0.06em;
+      font-variant-numeric: tabular-nums;
+      text-shadow: 0 1px 0 rgba(255, 255, 255, 0.22);
+      white-space: nowrap;
+      line-height: 1.25;
+      margin: 3px 0;
+      padding: 1px 8px;
+    }
+
+    .ring {
+      width: 28px;
+      height: 14px;
+      border: 3px solid #8f97a1;
+      border-bottom: none;
+      border-radius: 14px 14px 0 0;
+      background: transparent;
+      box-shadow:
+        inset 0 1px 2px rgba(255, 255, 255, 0.25),
+        inset 0 -2px 3px rgba(0, 0, 0, 0.12);
+    }
+
+    .tagline-back {
+      font-size: 11.5px;
+      color: rgba(58, 64, 72, 0.88);
+      text-align: center;
+      line-height: 1.42;
+      padding: 0 10px;
+      margin: 0;
+      letter-spacing: 0.03em;
+      text-shadow: 0 1px 0 rgba(255, 255, 255, 0.1);
+    }
+
+    .selector {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: center;
+      max-width: 380px;
+    }
+
+    .selector button {
+      padding: 8px 14px;
+      border: 2px solid rgba(251, 182, 206, 0.28);
+      background: rgba(255, 255, 255, 0.05);
+      color: #e9c4dc;
+      border-radius: 999px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      transition: transform 0.2s, box-shadow 0.2s, background 0.2s, border-color 0.2s, color 0.2s;
+    }
+
+    .selector button:hover {
+      transform: translateY(-2px);
+      border-color: rgba(251, 182, 206, 0.5);
+      color: #fff;
+      box-shadow: 0 6px 20px rgba(244, 114, 182, 0.2);
+    }
+
+    .selector button.active {
+      background: linear-gradient(135deg, #f9a8d4, #c4b5fd);
+      border-color: transparent;
+      color: #1e1024;
+      box-shadow: 0 6px 22px rgba(244, 114, 182, 0.38);
+    }
+
+  </style>
+</head>
+<body>
+
+<div class="bg-decor" aria-hidden="true">
+  <span class="paw">🐾</span>
+  <span class="paw">🐾</span>
+  <span class="paw">🐾</span>
+  <span class="paw">🐾</span>
+</div>
+
+<header class="brand">
+  <div class="brand-row">
+    <div class="brand-icon-wrap" title="PetWeGo">🐕</div>
+    <span class="brand-name">PetWeGo</span>
+  </div>
+  <p class="brand-sub">小狗 MBTI 名牌预览</p>
+</header>
+
+<p class="hint">略带厚度的激光吊牌示意 · 正面仅狗名与类型四字 · 桌面悬停 / 手机请点击圆牌翻面</p>
+
+<div class="ring-wrap">
+  <div class="ring"></div>
+  <div class="scene" id="tagScene" title="点此翻面">
+    <div class="tag">
+      <div class="face front">
+        <div class="face-inner">
+          <div class="dog-name" id="dogName">COCO</div>
+          <div class="personality" id="personality">ENFP</div>
+        </div>
+      </div>
+      <div class="face back">
+        <div class="face-inner face-inner-back">
+          <p class="lost-text">如果我迷路了<br>请联系我的铲屎官</p>
+          <p class="phone">138-0000-0000</p>
+          <p class="tagline-back" id="tagline">我去探索世界了，一会儿回来</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="selector">
+  <button type="button" class="active" onclick="setType('ENFP')">ENFP</button>
+  <button type="button" onclick="setType('ENTP')">ENTP</button>
+  <button type="button" onclick="setType('ENFJ')">ENFJ</button>
+  <button type="button" onclick="setType('ENTJ')">ENTJ</button>
+  <button type="button" onclick="setType('INFP')">INFP</button>
+  <button type="button" onclick="setType('INTP')">INTP</button>
+  <button type="button" onclick="setType('INFJ')">INFJ</button>
+  <button type="button" onclick="setType('INTJ')">INTJ</button>
+  <button type="button" onclick="setType('ESFP')">ESFP</button>
+  <button type="button" onclick="setType('ESTP')">ESTP</button>
+  <button type="button" onclick="setType('ESFJ')">ESFJ</button>
+  <button type="button" onclick="setType('ESTJ')">ESTJ</button>
+  <button type="button" onclick="setType('ISFP')">ISFP</button>
+  <button type="button" onclick="setType('ISTP')">ISTP</button>
+  <button type="button" onclick="setType('ISFJ')">ISFJ</button>
+  <button type="button" onclick="setType('ISTJ')">ISTJ</button>
+</div>
+
+<script>
+const data = {
+  ENFP: { tagline:'我去探索世界了，一会儿回来' },
+  ENTP: { tagline:'我坐了，但这是我自己决定的' },
+  ENFJ: { tagline:'我在照顾所有人，包括你' },
+  ENTJ: { tagline:'规则是我定的' },
+  INFP: { tagline:'我在角落，但我爱你' },
+  INTP: { tagline:'我在思考，别打扰' },
+  INFJ: { tagline:'我感觉到了，你还好吗' },
+  INTJ: { tagline:'我只需要说一次' },
+  ESFP: { tagline:'今天也是快乐的一天' },
+  ESTP: { tagline:'我需要更大的地方跑' },
+  ESFJ: { tagline:'大家都开心我才开心' },
+  ESTJ: { tagline:'几点出门，我记着呢' },
+  ISFP: { tagline:'让我自己决定走哪条路' },
+  ISTP: { tagline:'一次就够了，我听见了' },
+  ISFJ: { tagline:'我在门口等你，准时' },
+  ISTJ: { tagline:'秩序是最好的安全感' },
+};
+
+function applyType(type) {
+  if (!data[type]) return;
+  document.getElementById('personality').textContent = type;
+  document.getElementById('tagline').textContent = data[type].tagline;
+  document.querySelectorAll('.selector button').forEach(function (b) {
+    b.classList.toggle('active', b.textContent.trim() === type);
+  });
+}
+
+function setType(type) {
+  applyType(type);
+}
+
+(function initSceneFlip() {
+  var scene = document.getElementById('tagScene');
+  if (!scene) return;
+  scene.addEventListener('click', function () {
+    if (window.matchMedia('(hover: none)').matches) {
+      scene.classList.toggle('flipped');
+    }
+  });
+})();
+
+(function initFromMbtiTestQuery() {
+  var params = new URLSearchParams(location.search);
+  var t = (params.get('type') || '').toUpperCase();
+  var rawName = params.get('name');
+  if (rawName) {
+    var s = rawName.trim().slice(0, 12);
+    if (s) document.getElementById('dogName').textContent = s;
+  }
+  if (t && data[t]) applyType(t);
+  else applyType('ENFP');
+})();
+</script>
+
+</body>
+</html>
